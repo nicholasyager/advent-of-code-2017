@@ -17,8 +17,8 @@ fn main() {
     };
 
     // Part two doesn't allow for a clever solution :-( I'll start by
-    // constructing the necessary vector or vectors. Then I will start to fill
-    // in the values just like in the algorithm.
+    // constructing the necessary vector. Then I will start to fill in the 
+    // values just like in the algorithm in the description.
 
     // Find the ring number. Each ring has 8*n elements in it, where n is the
     // ring number.
