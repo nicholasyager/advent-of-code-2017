@@ -36,7 +36,7 @@ fn main() {
 
     let mut state: Vec<States> = Vec::new();
 
-    // The default state is SEARCHING.
+    // The default state is GROUPING.
     state.push(States::GROUPING);
     let mut group_value: u32 = 0;
     let mut index: usize = 0;
@@ -56,8 +56,6 @@ fn main() {
             States::GROUPING => print!("{}", character.to_string().green()),
         }
 
-        //println!("{:?} {:?} {:?} {:?} {:?}", current_state, index, character, group_value, score);
-
         match *current_state {
             States::SKIPING => {
                 let _ = state.pop();
@@ -76,7 +74,6 @@ fn main() {
                     state.push(States::SKIPING);
                 } 
             }, States::GARBAGE => {
-                
                 if character == '>' {
                     let _ = state.pop();
                 } else if character == '!' {
@@ -86,10 +83,7 @@ fn main() {
                 }
             }
         }
-       
-
         index += 1;
-
     }
 
     println!("\nScore: {:?}", score);
