@@ -27,8 +27,8 @@ fn main() {
     let f = File::open(filename).expect("file not found");
     let file = BufReader::new(&f);
 
-
     let mut child_position = Hex{x: 0_i32, y: 0_i32};
+    let mut max_distance: i32 = 0;
 
     for wrapped_line in file.lines() {
         let line = wrapped_line.unwrap();
@@ -49,10 +49,16 @@ fn main() {
                 "nw" => child_position.x -= 1,
                 _ => panic!("Unknown direction found!")
             }
+            let current_distance = child_position.distance(Hex{x: 0, y: 0});
+            if current_distance > max_distance {
+                max_distance = current_distance;
+            }
         }
     }
     println!("{:?}", child_position);
 
     let distance = child_position.distance(Hex{x: 0, y: 0});
     println!("Distance from origin: {:?}.", distance);
+
+    println!("Maximum distance: {:?}.", max_distance);
 }
