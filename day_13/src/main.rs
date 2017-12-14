@@ -4,13 +4,6 @@ use std::io::BufReader;
 use std::io::BufRead;
 use std::iter::Iterator;
 
-#[derive(Clone, Debug)]
-struct Layer {
-    range: usize,
-    scanner_position: usize,
-    forward: bool
-}
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     let filename: String = match args.get(1)  {
@@ -40,84 +33,60 @@ fn main() {
         }
     }
 
-
-    let mut firewall: Vec<Layer> = Vec::new();
-
-    // println!("{:?}", raw_layers);
-    // println!("{:?}", max_layers);
+    let mut firewall: Vec<u32> = Vec::new();
 
     // Instantiate as empty layers
-    for index in 0..(max_layers+1) {
-        firewall.push(Layer{range: 0, scanner_position: 0, forward: true});
+    for _ in 0..(max_layers+1) {
+        firewall.push(0);
     }
 
     // Populate the firewall with layers.
     for raw_layer in &raw_layers {
         let index = raw_layer.0 as usize;
-        let layer = Layer{range: raw_layer.1 as usize, 
-                          scanner_position: 0 as usize,
-                          forward: true};
-        // println!("Inserting layer {:?} into index {:?}.", layer, index);
+        let layer = raw_layer.1;
         firewall[index] = layer;
     }
 
-    let mut player_index: i32 = -1;
-    let mut caught: u32 = 0;
+    let mut delay = 0;
 
-    while player_index < max_layers as i32 {
-        // Move player
-        player_index += 1;
-        println!("Player is now at layer {:?}.", player_index);
-        {
-            let current_layer = &firewall[player_index as usize];
-            if current_layer.range != 0 {
-                // Attempt to predict the scanner's position.
-                let positive_cycle = (player_index / current_layer.range as i32) % 2 == 0;
-                let predicted_position: i32;
-                if positive_cycle {
-                    predicted_position = player_index % current_layer.range as i32;
+    loop {
+        let mut player_index: i32 = -1;
+        let mut caught: u32 = 0;
+        let mut time: u32 = delay;
+
+        while player_index < max_layers as i32 {
+            player_index += 1;
+            let range = firewall[player_index as usize];
+
+            if range != 0_u32 {
+                let scanner_position: u32;
+                let offset = time % ((range  - 1) * 2);
+
+                if offset > range {
+                    scanner_position = 2 * (range - 1) - offset;
                 } else {
-                    predicted_position = current_layer.range as i32 - (player_index % current_layer.range as i32);
+                    scanner_position = offset;
                 }
 
-                println!("Predicted position: {:?}", predicted_position);
+                if scanner_position == 0 {
+                    if player_index == 0 {
+                        caught += 1;
+                    }
+                    caught += range * player_index as u32;
+                }
             }
-
-
-            println!("The scanner is at position {:?}.", current_layer.scanner_position);
-            if current_layer.range != 0 && current_layer.scanner_position == 0 {
-                println!("Player has been caught!");
-                caught += current_layer.range as u32 * player_index as u32;
-            }
+           
+            time += 1
+        }
+       
+        if delay == 0 {
+            println!("Delay: {:?} - Player was caught with a severity of {:?}.", delay, caught);
         }
 
-        // Move scanners
-        let mut new_firewall = firewall.clone();
-
-        for (index, layer) in firewall.iter().enumerate() {
-            let mut new_layer = layer.clone();
-
-            // Empty ranges can be skipped
-            if layer.range == 0 {
-                continue
-            }
-
-            if layer.scanner_position == layer.range - 1 {
-                new_layer.forward = false;
-            } else if layer.scanner_position == 0 {
-                new_layer.forward = true;
-            }
-
-            if new_layer.forward {
-                new_layer.scanner_position += 1;
-            } else {
-                new_layer.scanner_position -= 1;
-            }
-
-            new_firewall[index] = new_layer;
-        }
-        firewall = new_firewall;
+        if caught == 0 {
+            break;
+        } 
+        delay += 1;
     }
-
-    println!("Player was caught with a severity of {:?}.", caught);
+    println!("Delay: {:?} - Player evaded capture.", delay);
 }
