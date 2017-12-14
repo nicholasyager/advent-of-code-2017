@@ -87,7 +87,7 @@ fn main() {
             println!("The scanner is at position {:?}.", current_layer.scanner_position);
             if current_layer.range != 0 && current_layer.scanner_position == 0 {
                 println!("Player has been caught!");
-                caught += 1;
+                caught += current_layer.range as u32 * player_index as u32;
             }
         }
 
@@ -119,5 +119,5 @@ fn main() {
         firewall = new_firewall;
     }
 
-    println!("Player was caught {:?} times.", caught);
+    println!("Player was caught with a severity of {:?}.", caught);
 }
