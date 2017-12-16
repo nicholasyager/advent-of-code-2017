@@ -15,30 +15,24 @@ fn to_binary(number: char) -> Vec<u8> {
     }
 
     binary_vector.reverse();
+    while binary_vector.len() < 4 {
+        binary_vector.insert(0, 0);
+    }
     binary_vector
 } 
 
+
+
 fn hash(hash_input: String) -> String {
-
-    println!("{:?}", hash_input);
-
-    // Convert hash_input into a vector of lengths;
-    let mut lengths: Vec<u8> = Vec::new();
-    for byte in hash_input.as_bytes() {
-        lengths.push(*byte);
-    }
-    println!("{:?}", lengths);
-
-    let mut rope: Vec<u8> = Vec::new();
-
     let rope_size: usize = 256;
-
-    for index in 0..rope_size {
-        rope.push(index as u8);
-    }
+    let mut rope: Vec<u8> = (0..rope_size).map(|x| x as u8).collect();
 
     let mut cursor: usize = 0;
     let mut skip: usize = 0;
+
+    let nonce: [u8; 5] = [17, 31, 73, 47, 23];
+    let mut lengths: Vec<u8> = Vec::from(hash_input.as_bytes());
+    lengths.extend_from_slice(&nonce);
 
     for _ in 0..64 {
         for length_byte in &lengths {
@@ -85,9 +79,8 @@ fn hash(hash_input: String) -> String {
         }
     }
 
+    println!("{:?}", rope);
     let mut hash: String = String::from("");
-
-    let mut hash_vector: Vec<String> = Vec::new();
     for block in 0..(rope.len()/16) {
         let mut hash_byte = 0;
         for index in 0..16 {
@@ -99,18 +92,29 @@ fn hash(hash_input: String) -> String {
     hash
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hash_empty() {
+        assert_eq!("a2582a3a0e66e6e86e3812dcb672a272", hash(String::from("")));
+    }
+
+    #[test]
+    fn test_hash_sequence() {
+        assert_eq!("63960835bcdc130f0b66d7ff4f6a5a8e", hash(String::from("1,2,4")));
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let hash_input: String = match args.get(1)  {
-        None => panic!("You must supply a file to evaluate."),
-        Some(filename) => filename.clone()
-    };
+    let hash_input: String = args.get(1).unwrap().clone();
 
     // Generate each of the hash inputs
     let hash_inputs: Vec<String> = (0..128).map(|row| {
         format!("{}-{}", hash_input, row)
     }).collect();
-    println!("{:?}", hash_inputs);
 
     // Generate a knot hash for each input
     let hashes: Vec<String> = hash_inputs.iter().map(|hash_input| {
