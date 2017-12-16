@@ -78,8 +78,6 @@ fn hash(hash_input: String) -> String {
             skip += 1;
         }
     }
-
-    println!("{:?}", rope);
     let mut hash: String = String::from("");
     for block in 0..(rope.len()/16) {
         let mut hash_byte = 0;
@@ -107,6 +105,18 @@ mod tests {
     }
 }
 
+fn get_cursor(bitmap: &Vec<Vec<(u8, u32)>>) -> Option<(usize, usize)>{
+
+    for (row_index, row) in bitmap.iter().enumerate() {
+        for (col_index, position) in row.iter().enumerate() {
+            if position.1 == 0 && position.0 == 1 {
+                return Some((row_index, col_index));
+            }
+        }
+    }
+    None
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let hash_input: String = args.get(1).unwrap().clone();
@@ -120,23 +130,69 @@ fn main() {
     let hashes: Vec<String> = hash_inputs.iter().map(|hash_input| {
         hash(hash_input.clone())
     }).collect();
-    println!("{:?}", hashes);
     
     // Convert each knot hash into binary
-    let bitmap: Vec<Vec<Vec<u8>>> = hashes.iter().map(|hash| {
+    let vector_map: Vec<Vec<Vec<u8>>> = hashes.iter().map(|hash| {
        hash.chars().map(|value| to_binary(value)).collect()
     }).collect();
-    println!("{:?}", bitmap);
+
+    let mut bitmap: Vec<Vec<(u8, u32)>> = Vec::new();
 
     // Take the sum of each row.
     let mut map_sum: u32 = 0;
-    for row in bitmap {
+    for row in vector_map {
+        let mut row_vector: Vec<(u8, u32)> = Vec::new();
         for column in row {
             for digit in column {
                 map_sum += digit as u32;
+                row_vector.push((digit, 0_u32));
             }
+        }
+        bitmap.push(row_vector);
+    }
+
+    println!("{:?}", bitmap);
+
+    // Perform a search for clusters. Oof. Here's my plan. Randomly select a
+    // location, perform a search of Von Neuman space, adding neighbors. Continue
+    // to perform this loop until there are no new neighbors. Randomly select a
+    // new unmapped location.
+    let mut groups = 0;
+
+    loop {
+        let cursor = match get_cursor(&bitmap) {
+            Some(coordinate) => coordinate,
+            None => break
+        };
+
+        groups += 1;
+
+        let mut positions_of_interest: Vec<(usize, usize)> = Vec::new();
+        positions_of_interest.push(cursor);
+
+        loop {
+            let mut new_positions_of_interest: Vec<(usize, usize)> = Vec::new(); 
+            for position_of_interest in positions_of_interest {
+                let mut neighbors: Vec<(usize, usize)> = [(0, 0), (-1, 0), (0, -1), (0, 1), (1, 0)].iter()
+                                     .map(|c| (c.0 as i32 + position_of_interest.0 as i32, c.1 as i32 + position_of_interest.1 as i32))
+                                     .filter(|c| c.0 >= 0 && c.0 < 128 &&  c.1 >= 0 && c.1 < 128)
+                                     .map(|c| (c.0 as usize, c.1 as usize))
+                                     .collect();
+                for neighbor_coords in neighbors {
+                    let neighbor = bitmap[neighbor_coords.0][neighbor_coords.1];
+                    if neighbor.0 == 1 && neighbor.1 == 0 {
+                        bitmap[neighbor_coords.0][neighbor_coords.1] = (neighbor.0, groups);
+                        new_positions_of_interest.push(neighbor_coords);
+                    }
+                }
+            }
+            if new_positions_of_interest.len() == 0 {
+                break;
+            }
+            positions_of_interest = new_positions_of_interest;
         }
     }
 
-    println!("The number of \"on\" cells is {:?}.", map_sum);
+    println!("\nThe number of \"on\" cells is {:?}.", map_sum);
+    println!("There are {} distinct groups.", groups);
 }
