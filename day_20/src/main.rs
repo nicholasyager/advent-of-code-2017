@@ -12,6 +12,63 @@ use std::collections::HashMap;
 use regex::Regex;
 use regex::Captures;
 
+use std::ops::Sub;
+use std::ops::Add;
+use std::ops::AddAssign;
+
+
+#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
+struct Coordinate {
+    x: i64,
+    y: i64,
+    z: i64
+}
+
+impl Add for Coordinate {
+    type Output = Coordinate;
+    fn add(self, other: Coordinate) -> Coordinate {
+        Coordinate {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z
+        }
+    }
+}
+
+impl Sub for Coordinate {
+    type Output = Coordinate;
+    fn sub(self, other: Coordinate) -> Coordinate {
+        Coordinate {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z
+        }
+    }
+}
+
+impl AddAssign for Coordinate {
+    fn add_assign(&mut self, other: Coordinate) {
+        self.x += other.x;
+        self.y += other.y;
+        self.z += other.z;
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Particle {
+    coordinate: Coordinate,
+    velocity: Coordinate,
+    acceleration: Coordinate
+}
+
+impl Particle {
+    fn tick(&mut self) {
+        self.velocity += self.acceleration;
+        self.coordinate += self.velocity;
+    }
+}
+
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let filename: String = args.get(1).unwrap().clone();
@@ -23,7 +80,7 @@ fn main() {
     // the accelerations alone, but I do not know if part 2 will require knowing
     // more about the actual particles that we are "simulating."
 
-    let mut particles: Vec<Vec<(i64, i64, i64)>> = Vec::new();
+    let mut particles: Vec<Particle> = Vec::new();
     let evaluation_time: i64 = 1000;
 
     let mut minimum_distance: u32 = 100000000;
@@ -47,7 +104,11 @@ fn main() {
             particle.push(coordinate);
            
         }
-        particles.push(particle.clone());
+        particles.push(Particle{
+            coordinate: Coordinate{x: particle[0].0, y: particle[0].1, z: particle[0].2},
+            velocity: Coordinate{x: particle[1].0, y: particle[1].1, z: particle[1].2},
+            acceleration: Coordinate{x: particle[2].0, y: particle[2].1, z: particle[2].2}
+        });
 
         // Calculate the future distance.
         let mut distance = (particle[0].0 + (particle[1].0 * evaluation_time) + (particle[2].0 * evaluation_time.pow(2))).abs() as u32; 
@@ -63,17 +124,18 @@ fn main() {
 
     // Simulate collisions for some arbitrary period of time.
     let mut ignore_list: HashSet<usize> = HashSet::new();
-    for time in 0..10000 {
-        let mut coordinates: HashMap<(i64, i64, i64), Vec<usize>> = HashMap::new();
+    for time in 0..1000 {
+        let mut coordinates: HashMap<Coordinate, Vec<usize>> = HashMap::new();
 
         for index1 in 0..particles.len() {
             if ignore_list.contains(&index1) {
                 continue;
             }
 
-            let position =  (particles[index1][0].0 + (particles[index1][1].0 * time) + (particles[index1][2].0 * time.pow(2)),
-                             particles[index1][0].1 + (particles[index1][1].1 * time) + (particles[index1][2].1 * time.pow(2)),
-                             particles[index1][0].2 + (particles[index1][1].2 * time) + (particles[index1][2].2 * time.pow(2))); 
+            let mut particle = particles[index1].clone();
+            particle.tick();
+            particles[index1] = particle.clone();
+            let position = particle.coordinate;
 
             let mut index_list: Vec<usize> = Vec::new();
             if coordinates.contains_key(&position) {
@@ -90,6 +152,6 @@ fn main() {
                 }
             }
         }
+        println!("Time {}: {} removed, {} remain.", time, ignore_list.len(), particles.len() - ignore_list.len());
     }
-    println!("{} removed, {} remain.", ignore_list.len(), particles.len() - ignore_list.len());
 }
