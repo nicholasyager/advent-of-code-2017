@@ -3,4 +3,8 @@ name = "day_23"
 version = "0.1.0"
 authors = ["Nicholas A. Yager <yager@nicholasyager.com>"]
 
+[[bin]]
+name = "part_2"
+path = "src/part_2/bin/main.rs"
+
 [dependencies]
