@@ -9,36 +9,31 @@ use std::collections::HashMap;
 #[derive(Debug)]
 struct Graph {
     edges: Vec<(u32, u32)>,
-    vertices: HashSet<u32>,
+    vertices: HashMap<u32, (u32, u32)>,
     // I'm going to need to know the neighbors a lot, so we might as well cache 
     // a map of the neighbors for each vertex.
     neighbors: HashMap<u32, HashSet<u32>>
 }
 
-fn bridge_strength(bridge: &Vec<u32>) -> u32{
-    let mut index = 0;
-    let mut strength = 0;
 
-    for element in bridge {
-        strength += element;
-    }
-    strength
-}
 
 impl Graph {
 
     fn new() -> Graph {
         Graph {
             edges: Vec::new(),
-            vertices: HashSet::new(),
+            vertices: HashMap::new(),
             neighbors: HashMap::new()
         }
     }
 
+    fn add_vertex(&mut self, vertex: (u32, u32)) {
+        let vertex_count: u32 = self.vertices.clone().len() as u32;
+        self.vertices.insert(vertex_count, vertex);
+    }
+
     fn add_edge(&mut self, edge: (u32, u32)) {
         self.edges.push(edge);
-        self.vertices.insert(edge.0);
-        self.vertices.insert(edge.1);
 
         let mut vertex_neighbors: HashSet<u32> = match self.neighbors.get(&edge.0) {
             Some(set) => set.clone(), 
@@ -56,17 +51,33 @@ impl Graph {
         self.neighbors.insert(edge.1, vertex_neighbors.clone());
     }
 
+    fn bridge_strength(&self, bridge: &Vec<u32>) -> u32{
+        let mut index = 0;
+        let mut strength = 0;
+
+        for element in bridge {
+            let vertex = self.vertices.get(&element).unwrap();
+            strength += vertex.0 + vertex.1;
+        }
+        strength
+    }
+
     fn strongest_bridge(&self, search_index: u32) -> Vec<u32> {
 
-        // 1  procedure DFS-iterative(G,v):
-        // 2      let S be a stack
-        // 3      S.push(v)
-        // 4      while S is not empty
-        // 5          v = S.pop()
-        // 6          if v is not labeled as discovered:
-        // 7              label v as discovered
-        // 8              for all edges from v to w in G.adjacentEdges(v) do 
-        // 9                  S.push(w)
+        // 
+        // let mut current_path: Vec<u32> = Vec::new();
+
+        // let mut search_stack: Vec<u32> = Vec::new();
+        // search_stack.push(search_index);
+        // loop {
+        //     let current_vertex = search_stack.pop().unwrap();
+        //     let current_path = path.push(current_vertex);
+
+
+
+        // }
+
+        let mut path_candidates: Vec<Vec<u32>> = Vec::new();
         let mut path: Vec<u32> = Vec::new();
         let mut longest_path: Vec<u32> = Vec::new();
         let mut stack: Vec<u32> = Vec::new();
@@ -75,20 +86,41 @@ impl Graph {
         stack.push(search_index);
         loop {
             let current_vertex = stack.pop().unwrap();
-
-            path.push(current_vertex);
-
             if !discovered.contains(&current_vertex) {
 
-                if bridge_strength(&path) > bridge_strength(&longest_path) {
-                    longest_path = path.clone();
-                }
-            
+                path.push(current_vertex);
 
                 discovered.insert(current_vertex);
-                for neighbor in self.neighbors.get(&current_vertex).unwrap() {
-                    stack.push(neighbor.clone());
+
+                loop {
+                    match self.neighbors.get(&current_vertex) {
+                    Some(neighbors) => {
+                        let new_neighbors: HashSet<_> = neighbors.difference(&discovered).collect();
+                        println!("{:?}",new_neighbors );
+                        if new_neighbors.len() == 0 {
+                            println!("No neighbors found!");
+                            path_candidates.push(path.clone());
+
+                            if path.len() == 1 {
+                                break;
+                            }
+
+                            let current_vertex = path.pop();
+                        } else {
+                            for neighbor in new_neighbors {
+                                stack.push(neighbor.clone());
+                            }
+                            break;
+                        }
+
+                        
+                    },
+                    None => {}
                 }
+                }
+
+               
+              
             }
 
 
@@ -96,6 +128,14 @@ impl Graph {
                 break;
             }
         }
+        println!("{:?}", path_candidates);
+
+        for path in path_candidates {
+            if self.bridge_strength(&path) > self.bridge_strength(&longest_path) {
+                    longest_path = path.clone();
+            }
+        }
+
         longest_path
     }
 
@@ -122,8 +162,23 @@ fn main() {
     // but maybe I'll luck out.
     let mut graph: Graph = Graph::new();
     for component in components {
-        graph.add_edge(component);
+        graph.add_vertex(component);
     }
+
+    // Construct the edges. In this case, we will place an edge between any two
+    // vertices that have a corresponding number.
+    let vertices = graph.vertices.clone();
+    for (index1, vertex1) in &vertices {
+        for (index2, vertex2) in &vertices {
+            if index1 == index2 {
+                continue;
+            }
+            if vertex1.0 == vertex2.0 ||  vertex1.0 == vertex2.1 ||  vertex1.1 == vertex2.0  || vertex1.1 == vertex2.1 {
+                graph.add_edge((*index1, *index2));
+            }
+        } 
+    }
+
     println!("{:?}", graph);
 
     // For each arbitrary starting point, perform a breadth-first search to find
@@ -131,9 +186,12 @@ fn main() {
     let graph_vertices = graph.vertices.clone();
     let mut maximum_strength: u32 = 0;
     let mut strongest_bridge: Vec<u32> = Vec::new();
-    for vertex in graph_vertices {
-        let bridge_candidate = graph.strongest_bridge(vertex);
-        let strength = bridge_strength(&bridge_candidate);
+    for (vertex_id, vertex) in graph_vertices {
+        let bridge_candidate = graph.strongest_bridge(vertex_id);
+        let strength = graph.bridge_strength(&bridge_candidate);
+
+        println!("{:?} | {:?} => {:?}", vertex_id, bridge_candidate, strength);
+
         if strength > maximum_strength {
             maximum_strength = strength;
             strongest_bridge = bridge_candidate.clone();
